@@ -3,7 +3,6 @@
 
 # Load packages -----------------------------------------------------------
 library(tidyverse)
-library(GGally)
 
 # Load data ---------------------------------------------------------------
 binetflow_bf   <- list.files("data/", "\\d\\.rds$", full.names = TRUE)
