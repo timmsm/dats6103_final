@@ -8,11 +8,13 @@ library(tidyverse)
 binetflow_bf   <- list.files("data/", "\\d\\.rds$", full.names = TRUE)
 binetflow_base <- binetflow_bf %>% 
   map(read_rds) %>% 
+  map(~ filter(.x, label != "Background")) %>% 
   set_names(gsub("data/(.+)\\.rds", "\\1", binetflow_bf))
 
 binetflow_rf     <- list.files("data/", "_rolled\\.rds$", full.names = TRUE)
 binetflow_rolled <- binetflow_rf %>% 
   map(read_rds) %>% 
+  map(~ filter(.x, label != "Background")) %>% 
   set_names(gsub("data/(.+)\\.rds", "\\1", binetflow_rf))
 
 # Define visualization functions ------------------------------------------
@@ -40,10 +42,26 @@ create_density <- function(data, filename) {
   data
 }
 
+create_barplots <- function(data, filename) {
+  bar_cols <- c("proto", "dir", "state")
+  
+  if (!all(has_name(data, bar_cols))) return(data)
+  
+  for (col in bar_cols) {
+    ggplot(data, aes_string(x = col)) +
+      geom_bar(stat = "count") + 
+      facet_grid(~ label) +
+      ggsave(sprintf("plots/%s_%s_bar.png", filename, col))
+  }
+  
+  data
+}
+
 # Visualize data ----------------------------------------------------------
 plot_all <- . %>% 
-  walk2(names(.), create_boxplots) %>% 
-  walk2(names(.), create_density)
+  walk2(names(.), create_boxplots) %>%
+  walk2(names(.), create_density) %>%
+  walk2(names(.), create_barplots)
 
 list(binetflow_base, binetflow_rolled) %>% 
   walk(plot_all)
