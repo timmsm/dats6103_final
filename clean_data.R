@@ -2,7 +2,6 @@
 # Purpose: Clean binetflow files for use in data mining
 
 # Load packages -----------------------------------------------------------
-library(lubridate)
 library(tidyverse)
 
 # Read binetflow files ----------------------------------------------------
@@ -25,31 +24,23 @@ binetflow_data  <- binetflow_files %>%
 clean_binetflow <- . %>%   
   set_names(gsub("([a-z])([A-Z])", "\\1_\\2", names(.))) %>% 
   set_names(tolower(names(.))) %>% 
-  dmap_at("start_time", ymd_hms) %>% 
-  group_by(src_addr) %>% 
-  do(mutate_at(
-    ., vars(start_time), funs(interval(min(.), max(.)) %>% time_length())
-  )) %>% 
-  ungroup() %>% 
   mutate(
     label = gsub("^flow=.*(Background|Normal|Botnet).*", "\\1", label),
     pct_src_bytes = src_bytes / tot_bytes
   ) %>% 
-  select(start_time, dur, src_addr, state, tot_pkts, src_bytes, tot_bytes,
-         pct_src_bytes, label)
+  select(dur, src_addr, state, tot_pkts, src_bytes, tot_bytes, pct_src_bytes, label)
 
 roll_src_addr <- . %>% 
-  select(-state, -dur) %>% 
+  select(-state) %>% 
   group_by(src_addr, label) %>% 
   summarize(
-    start_time = head(start_time, 1),
-    tot_pkts   = sum(tot_pkts),
-    src_bytes  = sum(src_bytes),
-    tot_bytes  = sum(tot_bytes)
+    dur       = sum(dur),
+    tot_pkts  = sum(tot_pkts),
+    src_bytes = sum(src_bytes),
+    tot_bytes = sum(tot_bytes)
   ) %>% 
   ungroup() %>% 
-  dmap_at("start_time", ~ if_else(.x == 0, 1, .x)) %>% 
-  mutate_if(is_numeric, funs(. / start_time)) %>% 
+  mutate_if(is_numeric, funs(. / dur)) %>% 
   mutate(pct_src_bytes = src_bytes / tot_bytes) %>% 
   select(-src_bytes, -tot_bytes)
 
