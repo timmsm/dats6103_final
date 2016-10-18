@@ -18,7 +18,7 @@ binetflow_cols <- cols(
 binetflow_files <- list.files("data/", "\\.binetflow$", full.names = TRUE)
 binetflow_data  <- binetflow_files %>% 
   map(read_csv, col_types = binetflow_cols) %>% 
-  set_names(gsub("data//(.+)\\.binetflow$", "\\1", binetflow_files))
+  set_names(gsub("data/(.+)\\.binetflow$", "\\1", binetflow_files))
 
 # Define cleaning functions -----------------------------------------------
 clean_binetflow <- . %>%   
@@ -28,7 +28,7 @@ clean_binetflow <- . %>%
     label = gsub("^flow=.*(Background|Normal|Botnet).*", "\\1", label),
     pct_src_bytes = src_bytes / tot_bytes
   ) %>% 
-  select(dur, src_addr, state, tot_pkts, src_bytes, tot_bytes, pct_src_bytes, label)
+  select(-start_time, -dst_addr, -s_tos, -d_tos)
 
 roll_src_addr <- . %>% 
   select(-state) %>% 
@@ -43,7 +43,7 @@ roll_src_addr <- . %>%
   mutate_if(is_numeric, funs(. / dur)) %>% 
   mutate(pct_src_bytes = src_bytes / tot_bytes) %>% 
   select(-src_bytes, -tot_bytes)
-
+  
 # Clean binetflow files ---------------------------------------------------
 binetflow_clean <- binetflow_data %>% 
   map(clean_binetflow)
@@ -54,4 +54,5 @@ binetflow_rolled <- binetflow_clean %>%
 
 # Write cleaned files to disk ---------------------------------------------
 c(binetflow_clean, binetflow_rolled) %>% 
+  map(~ dmap_if(.x, is_character, as.factor)) %>% 
   walk2(names(.), ~ write_rds(.x, sprintf("data/%s.rds", .y)))
